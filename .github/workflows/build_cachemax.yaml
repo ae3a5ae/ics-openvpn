@@ -6,10 +6,19 @@ permissions:
 
 on:
   workflow_dispatch:
+    push:
+    paths:
+      - 'main/**'
+      - 'gradle/**'
+      - '*.gradle*'
+      - 'settings.gradle*'
+      - 'build.gradle*'
+      - 'gradle.properties'
+      - '.github/workflows/build.yaml'
 
 jobs:
   build:
-    name: Release UiOvpn23
+    name: Release UiOvpn2
     runs-on: ubuntu-latest
 
     steps:
@@ -69,7 +78,7 @@ jobs:
         run: |
           ./gradlew \
             --build-cache \
-            assembleUiOvpn23Release
+            assembleUiOvpn2Release
 
       - name: Find generated APKs
         run: |
