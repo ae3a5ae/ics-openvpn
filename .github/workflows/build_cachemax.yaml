@@ -1,0 +1,76 @@
+
+name: Build_cachemax
+
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Release UiOvpn23
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout the code
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v6
+        with:
+          java-version: 25
+          distribution: temurin
+
+      # Gradle dependencies, wrapper distributions and build cache.
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Configure Gradle
+        run: |
+          mkdir -p ~/.gradle
+          cat >> ~/.gradle/gradle.properties <<'EOF'
+          icsopenvpnDebugSign=true
+          org.gradle.jvmargs=-Xmx4g -Dfile.encoding=UTF-8
+          org.gradle.caching=true
+          org.gradle.parallel=true
+          EOF
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+
+      # Explicitly install the versions required by the project.
+      - name: Install Android build tools
+        run: |
+          sdkmanager --install \
+            "platforms;android-37" \
+            "ndk;30.0.14904198" \
+            "cmake;3.22.1"
+
+      # Cache CMake/Ninja native build intermediates.
+      # Restore an older cache when C++ sources change, allowing
+      # Ninja to rebuild only affected native targets.
+      - name: Cache native build
+        uses: actions/cache@v4
+        with:
+          path: |
+            main/.cxx
+            main/.externalNativeBuild
+          key: ${{ runner.os }}-ndk-30.0.14904198-${{ hashFiles('main/src/main/cpp/**', 'main/build.gradle.kts', 'gradle/libs.versions.toml', 'gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-ndk-30.0.14904198-
+
+      - name: Build the app
+        run: |
+          ./gradlew \
+            --build-cache \
+            assembleUiOvpn23Release
+
+      - name: Archive APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-UiOvpn23-release-apk
+          path: main/build/outputs/apk/**/*universal*.apk
+          if-no-files-found: error
