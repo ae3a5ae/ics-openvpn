@@ -11,6 +11,8 @@ import android.os.Build;
 import android.os.HandlerThread;
 import android.os.Message;
 
+import android.os.SystemProperties;
+
 import androidx.annotation.StringRes;
 
 import java.io.File;
@@ -110,8 +112,10 @@ public class VpnStatus {
             message = message.substring(0, message.length() - 1);
 
         String status = mLaststate;
-        if (status.equals("NOPROCESS"))
+        if (status.equals("NOPROCESS")) {
+            SystemProperties.set("debug.myvars.vpn", "down");
             return message;
+            }
 
         if (mLastStateresid == R.string.state_waitconnectretry) {
             return c.getString(R.string.state_waitconnectretry, mLaststatemsg);
@@ -346,12 +350,16 @@ public class VpnStatus {
                 return ConnectionStatus.LEVEL_CONNECTING_SERVER_REPLIED;
 
         for (String x : connected)
-            if (state.equals(x))
+            if (state.equals(x)){
+                SystemProperties.set("debug.myvars.vpn", "up");
                 return ConnectionStatus.LEVEL_CONNECTED;
+            }
 
         for (String x : notconnected)
-            if (state.equals(x))
+            if (state.equals(x)){
+                SystemProperties.set("debug.myvars.vpn", "down");
                 return ConnectionStatus.LEVEL_NOTCONNECTED;
+            }
 
         return ConnectionStatus.UNKNOWN_LEVEL;
 
