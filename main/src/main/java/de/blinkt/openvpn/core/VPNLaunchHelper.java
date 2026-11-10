@@ -27,7 +27,7 @@ public class VPNLaunchHelper {
 //    }    
         String nativeAPI = NativeUtils.getNativeAPI();
         /* Q does not allow executing binaries written in temp directory anymore */
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
             return new File(context.getApplicationInfo().nativeLibraryDir, "libovpnexec.so").getPath();
 
         String[] abis = Build.SUPPORTED_ABIS;
