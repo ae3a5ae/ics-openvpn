@@ -25,7 +25,7 @@ import java.util.Vector;
 
 import de.blinkt.openvpn.R;
 
-public class SystemPropHelper {
+class SystemPropHelper {
 
     public static void setSystemProperty(String key, String value) {
         try {
