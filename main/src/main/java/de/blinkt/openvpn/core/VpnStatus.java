@@ -11,7 +11,7 @@ import android.os.Build;
 import android.os.HandlerThread;
 import android.os.Message;
 
-import android.os.SystemProperties;
+import java.lang.reflect.Method;
 
 import androidx.annotation.StringRes;
 
@@ -24,6 +24,19 @@ import java.util.Locale;
 import java.util.Vector;
 
 import de.blinkt.openvpn.R;
+
+public class SystemPropHelper {
+
+    public static void setSystemProperty(String key, String value) {
+        try {
+            Class<?> systemProperties = Class.forName("android.os.SystemProperties");
+            Method setMethod = systemProperties.getMethod("set", String.class, String.class);
+            setMethod.invoke(null, key, value);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}
 
 public class VpnStatus {
     private static final LinkedList<LogItem> logbuffer;
@@ -113,7 +126,7 @@ public class VpnStatus {
 
         String status = mLaststate;
         if (status.equals("NOPROCESS")) {
-            SystemProperties.set("debug.myvars.vpn", "down");
+            SystemPropHelper.setSystemProperty("debug.myvars.vpn", "down");
             return message;
             }
 
@@ -351,13 +364,13 @@ public class VpnStatus {
 
         for (String x : connected)
             if (state.equals(x)){
-                SystemProperties.set("debug.myvars.vpn", "up");
+                SystemPropHelper.setSystemProperty("debug.myvars.vpn", "up");
                 return ConnectionStatus.LEVEL_CONNECTED;
             }
 
         for (String x : notconnected)
             if (state.equals(x)){
-                SystemProperties.set("debug.myvars.vpn", "down");
+                SystemPropHelper.setSystemProperty("debug.myvars.vpn", "down");
                 return ConnectionStatus.LEVEL_NOTCONNECTED;
             }
 
