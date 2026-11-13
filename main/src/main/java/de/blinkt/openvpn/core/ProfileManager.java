@@ -116,7 +116,7 @@ public class ProfileManager {
 public static void saveProfile(Context context, VpnProfile profile) {
     try {
         runLocked(context, () -> saveProfileInternal(context, profile));
-    } catch (IOException e) {
+    } catch (Exception e) {
         VpnStatus.logException("saving VPN profile", e);
         throw new RuntimeException(e);
     }
@@ -357,45 +357,38 @@ public static void saveProfile(Context context, VpnProfile profile) {
     }
 
     private void loadVpnEntry(Context context, String vpnentry) {
-        ObjectInputStream vpnfile = null;
         try {
             runLocked(context, () -> {
-            FileInputStream vpInput;
-            File encryptedPath = context.getFileStreamPath(vpnentry + ".cp");
-            File encryptedPathOld = context.getFileStreamPath(vpnentry + ".cpold");
+                FileInputStream vpInput;
+                File encryptedPath = context.getFileStreamPath(vpnentry + ".cp");
+                File encryptedPathOld = context.getFileStreamPath(vpnentry + ".cpold");
 
-            if (encryptedPath.exists()) {
-                vpInput = ProfileEncryption.getEncryptedVpInput(context, encryptedPath);
-            } else if (encryptedPathOld.exists()) {
-                vpInput = ProfileEncryption.getEncryptedVpInput(context, encryptedPathOld);
-            } else {
-                vpInput = context.openFileInput(vpnentry + ".vp");
-            }
-            vpnfile = new ObjectInputStream(vpInput);
-            VpnProfile vp = ((VpnProfile) vpnfile.readObject());
+                if (encryptedPath.exists()) {
+                    vpInput = ProfileEncryption.getEncryptedVpInput(context, encryptedPath);
+                } else if (encryptedPathOld.exists()) {
+                    vpInput = ProfileEncryption.getEncryptedVpInput(context, encryptedPathOld);
+                } else {
+                    vpInput = context.openFileInput(vpnentry + ".vp");
+                }
 
-            // Sanity check
-            if (vp == null || vp.mName == null || vp.getUUID() == null)
-                return;
+                try (ObjectInputStream vpnfile = new ObjectInputStream(vpInput)) {
+                    VpnProfile vp = (VpnProfile) vpnfile.readObject();
 
-            vp.upgradeProfile();
-            if (vpnentry.equals(TEMPORARY_PROFILE_FILENAME)) {
-                tmpprofile = vp;
-            } else {
-                profiles.put(vp.getUUID().toString(), vp);
-            }
-        });
-        } catch (IOException | ClassNotFoundException | GeneralSecurityException e) {
+                    // Sanity check
+                    if (vp == null || vp.mName == null || vp.getUUID() == null)
+                        return;
+
+                    vp.upgradeProfile();
+                    if (vpnentry.equals(TEMPORARY_PROFILE_FILENAME)) {
+                        tmpprofile = vp;
+                    } else {
+                        profiles.put(vp.getUUID().toString(), vp);
+                    }
+                }
+            });
+        } catch (Exception e) {
             if (!vpnentry.equals(TEMPORARY_PROFILE_FILENAME))
                 VpnStatus.logException("Loading VPN List:" + vpnentry, e);
-        } finally {
-            if (vpnfile != null) {
-                try {
-                    vpnfile.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
         }
     }
 
@@ -419,10 +412,10 @@ public static void saveProfile(Context context, VpnProfile profile) {
 
 @FunctionalInterface
 private interface ProfileIoAction {
-    void run() throws IOException;
+    void run() throws Exception;
 }
 
-private static void runLocked(Context context, ProfileIoAction action) throws IOException {
+private static void runLocked(Context context, ProfileIoAction action) throws Exception {
     synchronized (LOCAL_PROFILE_LOCK) {
         File lockFile = new File(context.getFilesDir(), "profiles.lock");
         try (RandomAccessFile raf = new RandomAccessFile(lockFile, "rw");
