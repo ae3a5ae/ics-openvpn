@@ -61,6 +61,28 @@ jobs:
       - name: Check Android SDK platforms
         run: sdkmanager --list | grep "platforms;android-"
 
+
+      # Install and configure C/C++ compiler cache.
+      - name: Install ccache
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ccache
+
+      - name: Configure ccache
+        run: |
+          echo "CCACHE_DIR=$HOME/.ccache" >> "$GITHUB_ENV"
+          echo "CCACHE_MAXSIZE=2G" >> "$GITHUB_ENV"
+          echo "CCACHE_COMPILERCHECK=content" >> "$GITHUB_ENV"
+
+      - name: Restore C/C++ compiler cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.ccache
+          key: ${{ runner.os }}-ndk-30-ccache-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-ndk-30-ccache-
+
+
       # Cache CMake/Ninja native build intermediates.
       # Restore an older cache when C++ sources change, allowing
       # Ninja to rebuild only affected native targets.
@@ -79,6 +101,12 @@ jobs:
           ./gradlew \
             --build-cache \
             assembleUiOvpn2Release
+
+
+      - name: Show C/C++ cache statistics
+        if: always()
+        run: ccache --show-stats
+
 
       - name: Find generated APKs
         run: |
