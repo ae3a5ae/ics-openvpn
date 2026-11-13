@@ -26,6 +26,10 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.Vector;
 
+import java.io.RandomAccessFile;
+import java.nio.channels.FileChannel;
+import java.nio.channels.FileLock;
+
 import de.blinkt.openvpn.VpnProfile;
 
 public class ProfileManager {
@@ -109,7 +113,16 @@ public class ProfileManager {
         return mLastConnectedVpn != null && mLastConnectedVpn == tmpprofile;
     }
 
-    public static void saveProfile(Context context, VpnProfile profile) {
+public static void saveProfile(Context context, VpnProfile profile) {
+    try {
+        runLocked(context, () -> saveProfileInternal(context, profile));
+    } catch (IOException e) {
+        VpnStatus.logException("saving VPN profile", e);
+        throw new RuntimeException(e);
+    }
+}
+
+    private static void saveProfileInternal(Context context, VpnProfile profile) {
         SharedPreferences prefs = Preferences.getDefaultSharedPreferences(context);
         boolean preferEncryption = prefs.getBoolean("preferencryption", true);
         if (encryptionBroken)
@@ -158,7 +171,7 @@ public class ProfileManager {
                     VpnStatus.logException(VpnStatus.LogLevel.INFO, "Error trying to write an encrypted VPN profile, disabling " +
                             "encryption", ioe);
                     encryptionBroken = true;
-                    saveProfile(context, profile);
+                    saveProfileInternal(context, profile);
                     return;
                 }
             }
@@ -304,13 +317,12 @@ public class ProfileManager {
         }
     }
 
-    private synchronized void loadVPNList(Context context) {
+     private void loadVPNList(Context context) {
         profiles = new HashMap<>();
         SharedPreferences listpref = Preferences.getSharedPreferencesMulti(PREFS_NAME, context);
         Set<String> vlist = listpref.getStringSet("vpnlist", null);
-        if (vlist == null) {
-            vlist = new HashSet<>();
-        }
+        vlist = (vlist == null) ? new HashSet<>() : new HashSet<>(vlist);
+
         // Always try to load the temporary profile
         vlist.add(TEMPORARY_PROFILE_FILENAME);
 
@@ -318,8 +330,7 @@ public class ProfileManager {
             loadVpnEntry(context, vpnentry);
         }
 
-        if (!listpref.getBoolean("didrecover", false))
-        {
+        if (!listpref.getBoolean("didrecover", false)) {
             recoverProfiles(context);
             Editor listprefedit = listpref.edit();
             listprefedit.putBoolean("didrecover", true);
@@ -345,9 +356,10 @@ public class ProfileManager {
 
     }
 
-    private synchronized void loadVpnEntry(Context context, String vpnentry) {
+    private void loadVpnEntry(Context context, String vpnentry) {
         ObjectInputStream vpnfile = null;
         try {
+            runLocked(context, () -> {
             FileInputStream vpInput;
             File encryptedPath = context.getFileStreamPath(vpnentry + ".cp");
             File encryptedPathOld = context.getFileStreamPath(vpnentry + ".cpold");
@@ -372,6 +384,7 @@ public class ProfileManager {
             } else {
                 profiles.put(vp.getUUID().toString(), vp);
             }
+        });
         } catch (IOException | ClassNotFoundException | GeneralSecurityException e) {
             if (!vpnentry.equals(TEMPORARY_PROFILE_FILENAME))
                 VpnStatus.logException("Loading VPN List:" + vpnentry, e);
@@ -401,4 +414,24 @@ public class ProfileManager {
             mLastConnectedVpn = null;
 
     }
+
+    private static final Object LOCAL_PROFILE_LOCK = new Object();
+
+@FunctionalInterface
+private interface ProfileIoAction {
+    void run() throws IOException;
+}
+
+private static void runLocked(Context context, ProfileIoAction action) throws IOException {
+    synchronized (LOCAL_PROFILE_LOCK) {
+        File lockFile = new File(context.getFilesDir(), "profiles.lock");
+        try (RandomAccessFile raf = new RandomAccessFile(lockFile, "rw");
+             FileChannel channel = raf.getChannel();
+             FileLock lock = channel.lock()) {
+            action.run();
+        }
+    }
+}
+
+
 }
