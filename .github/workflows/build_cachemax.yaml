@@ -6,15 +6,6 @@ permissions:
 
 on:
   workflow_dispatch:
-    push:
-    paths:
-      - 'main/**'
-      - 'gradle/**'
-      - '*.gradle*'
-      - 'settings.gradle*'
-      - 'build.gradle*'
-      - 'gradle.properties'
-      - '.github/workflows/build.yaml'
 
 jobs:
   build:
