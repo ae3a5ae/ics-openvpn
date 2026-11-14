@@ -1,3 +1,7 @@
+if (file("build.gradle.kts.local").exists()) {
+    apply(from = "build.gradle.kts.local")
+}
+
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.tasks.OutputDirectory
 import org.gradle.api.tasks.TaskProvider
