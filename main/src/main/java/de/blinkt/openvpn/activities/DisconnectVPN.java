@@ -65,7 +65,7 @@ public class DisconnectVPN extends Activity implements DialogInterface.OnClickLi
         SharedPreferences prefs = Preferences.getDefaultSharedPreferences(this);
         if (prefs.getBoolean("disableconfirmation", false)) {
             disconnectPending = true;
-            Toast.makeText(this, "Disconnecting VPN", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "Disconnecting VPN", Toast.LENGTH_SHORT).show();
         } else {
             showDisconnectDialog();
         }
