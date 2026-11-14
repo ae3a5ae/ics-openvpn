@@ -1,7 +1,3 @@
-if (file("build.gradle.kts.local").exists()) {
-    apply(from = "build.gradle.kts.local")
-}
-
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.tasks.OutputDirectory
 import org.gradle.api.tasks.TaskProvider
@@ -42,6 +38,9 @@ android {
         //targetSdkPreview = "UpsideDownCake"
         versionCode = 225
         versionName = "0.7.69"
+        ndk {
+            abiFilters += listOf("arm64-v8a")
+        }        
         externalNativeBuild {
             cmake {
                 //arguments+= "-DCMAKE_VERBOSE_MAKEFILE=1"
@@ -49,6 +48,7 @@ android {
                 "-DCMAKE_C_COMPILER_LAUNCHER=ccache",
                 "-DCMAKE_CXX_COMPILER_LAUNCHER=ccache"
                 )
+                abiFilters += listOf("arm64-v8a")
             }
         }
     }
@@ -176,7 +176,8 @@ android {
         abi {
             isEnable = false
             reset()
-            include(/* "x86", "x86_64", "armeabi-v7a", */ "arm64-v8a")
+            //include("x86", "x86_64", "armeabi-v7a", "arm64-v8a")
+            include("arm64-v8a")
             isUniversalApk = true
         }
     }
@@ -305,3 +306,7 @@ dependencies {
 
 fun DependencyHandler.uiImplementation(dependencyNotation: Any): Dependency? =
     add("uiImplementation", dependencyNotation)
+
+if (file("build.gradle.kts.local").exists()) {
+    apply(from = "build.gradle.kts.local")
+}
